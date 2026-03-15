@@ -1,25 +1,24 @@
 # app.py
 import streamlit as st
-import requests
 import os
+import requests
 from datetime import datetime
 
-# ---------- PAGE CONFIG ----------
-st.set_page_config(page_title="HubBot", page_icon="🤖", layout="centered")
+# Load API key from Streamlit secrets or environment variable
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
 
-# ---------- GROQ API KEY (from environment or Streamlit secrets) ----------
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", st.secrets.get("GROQ_API_KEY", ""))
+if not GROQ_API_KEY:
+    st.error("Groq API key not found. Please set it as an environment variable or add it to `.streamlit/secrets.toml`.")
+    st.stop()
+
+# Define constants
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama-3.3-70b-versatile"
 
-if not GROQ_API_KEY:
-    st.error(
-        "Groq API key not found. Please set it as an environment variable "
-        "`GROQ_API_KEY` or add it to `.streamlit/secrets.toml`."
-    )
-    st.stop()
+# Set page configuration
+st.set_page_config(page_title="HubBot", page_icon="🤖", layout="centered")
 
-# ---------- CUSTOM CSS (exact look from the image) ----------
+# Define custom CSS
 st.markdown("""
 <style>
     /* Overall background */
@@ -109,23 +108,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- SESSION STATE INIT ----------
+# Initialize session state
 if "messages" not in st.session_state:
-    # Initial bot message with timestamp (exactly as in screenshot)
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                "Want to add a chatbot (like this one) to your website? I’m an AI bot that’s here to help! 😊\n\n"
-                "What would you like to do next?"
-            ),
-            "timestamp": datetime.now().strftime("%I:%M %p")
-        }
-    ]
+    st.session_state.messages = []
 if "first_message_sent" not in st.session_state:
     st.session_state.first_message_sent = False
 
-# ---------- HELPER FUNCTION TO CALL GROQ ----------
+# Define function to call Groq API
 def call_groq(prompt):
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -143,53 +132,33 @@ def call_groq(prompt):
     except Exception as e:
         return f"⚠️ Error: {str(e)}"
 
-# ---------- HEADER WITH LOGO (safe loading) ----------
-# Check if the logo file exists; if not, show a text header
+# Display header with logo
 logo_path = "hubspot_logo.png"
 if os.path.exists(logo_path):
     st.image(logo_path, width=150)
 else:
     st.markdown("<h2 style='text-align: center; color:#0b2b4a;'>HubBot</h2>", unsafe_allow_html=True)
 
-# ---------- DISPLAY CHAT HISTORY ----------
+# Display chat history
 for msg in st.session_state.messages:
-    # Determine avatar
-    if msg["role"] == "assistant":
-        # Try to use custom bot avatar if it exists
-        bot_avatar_path = "bot_avatar.png"
-        if os.path.exists(bot_avatar_path):
-            avatar = bot_avatar_path
-        else:
-            avatar = "🤖"
-    else:
-        avatar = "👤"
-    
-    with st.chat_message(msg["role"], avatar=avatar):
+    with st.chat_message(msg["role"], avatar="🤖" if msg["role"] == "assistant" else "👤"):
         st.markdown(msg["content"])
-        # Display timestamp if available
         if "timestamp" in msg:
             ts_class = "user-timestamp" if msg["role"] == "user" else ""
-            st.markdown(
-                f'<div class="timestamp {ts_class}">{msg["timestamp"]}</div>',
-                unsafe_allow_html=True
-            )
+            st.markdown(f'<div class="timestamp {ts_class}">{msg["timestamp"]}</div>', unsafe_allow_html=True)
 
-# ---------- OPTIONS BUTTONS (only before first user message) ----------
+# Display options buttons
 if not st.session_state.first_message_sent:
-    # Use columns to place four buttons in a row
     col1, col2, col3, col4 = st.columns(4)
-    
     with col1:
         if st.button("☐ Chat with sales", key="opt1", use_container_width=True):
             st.session_state.first_message_sent = True
             user_msg = "Chat with sales"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            # Get bot reply
             reply = call_groq(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
-    
     with col2:
         if st.button("🗹 Book a demo", key="opt2", use_container_width=True):
             st.session_state.first_message_sent = True
@@ -199,7 +168,6 @@ if not st.session_state.first_message_sent:
             reply = call_groq(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
-    
     with col3:
         if st.button("❌ Get started for free", key="opt3", use_container_width=True):
             st.session_state.first_message_sent = True
@@ -209,7 +177,6 @@ if not st.session_state.first_message_sent:
             reply = call_groq(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
-    
     with col4:
         if st.button("☐ Get help with my account", key="opt4", use_container_width=True):
             st.session_state.first_message_sent = True
@@ -219,8 +186,6 @@ if not st.session_state.first_message_sent:
             reply = call_groq(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
-    
-    # Disclaimer and AI warning (exactly as in image)
     st.markdown("""
     <div class="disclaimer">
         HubSpot uses the information you provide to us to contact you about our relevant content, products, and services. Check out our <a href="#">privacy policy</a> here.
@@ -228,28 +193,17 @@ if not st.session_state.first_message_sent:
     <div class="ai-warning">AI-generated content may be inaccurate.</div>
     """, unsafe_allow_html=True)
 
-# ---------- CHAT INPUT (free text) ----------
+# Display chat input
 if prompt := st.chat_input("Ask me anything..."):
-    # Mark that a message has been sent (hides options)
     st.session_state.first_message_sent = True
     now = datetime.now().strftime("%I:%M %p")
-    # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt, "timestamp": now})
-    # Show immediately (rerun will display it)
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
         st.markdown(f'<div class="timestamp user-timestamp">{now}</div>', unsafe_allow_html=True)
-    
-    # Get bot response
-    bot_avatar = "bot_avatar.png" if os.path.exists("bot_avatar.png") else "🤖"
-    with st.chat_message("assistant", avatar=bot_avatar):
-        with st.spinner("Thinking..."):
-            reply = call_groq(prompt)
+    reply = call_groq(prompt)
+    with st.chat_message("assistant", avatar="🤖"):
         st.markdown(reply)
         st.markdown(f'<div class="timestamp">{datetime.now().strftime("%I:%M %p")}</div>', unsafe_allow_html=True)
-    
-    # Store bot response
     st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
-    
-    # Force a rerun to update the full chat history
     st.rerun()
