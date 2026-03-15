@@ -7,6 +7,9 @@ from datetime import datetime
 # Load API key from Streamlit secrets or environment variable
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
 
+api_key = st.secrets["GROQ_API_KEY"]
+
+
 if not GROQ_API_KEY:
     st.error("Groq API key not found. Please set it as an environment variable or add it to `.streamlit/secrets.toml`.")
     st.stop()
