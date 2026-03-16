@@ -14,7 +14,7 @@ if not OPENROUTER_API_KEY:
     st.stop()
 
 # Define constants
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
 # You can change this to any model from https://openrouter.ai/models
 MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"   # Free model
 
