@@ -1,27 +1,28 @@
-# app.py
 import streamlit as st
 import os
 import requests
 from datetime import datetime
 
-# Load API key from Streamlit secrets or environment variable
-GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+# Load OpenRouter API key from Streamlit secrets or environment variable
+OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
 
-api_key = st.secrets["GROQ_API_KEY"]
-
-
-if not GROQ_API_KEY:
-    st.error("Groq API key not found. Please set it as an environment variable or add it to `.streamlit/secrets.toml`.")
+if not OPENROUTER_API_KEY:
+    st.error("OpenRouter API key not found. Please set it as an environment variable or add it to `.streamlit/secrets.toml`.")
     st.stop()
 
 # Define constants
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = "llama-3.3-70b-versatile"
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+# You can change this to any model from https://openrouter.ai/models
+MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"   # Free model
+
+# Optional: Identify your app to OpenRouter (helps with support)
+SITE_URL = "https://yourapp.com"   # Replace with your actual URL if deployed
+APP_NAME = "HubBot"
 
 # Set page configuration
 st.set_page_config(page_title="HubBot", page_icon="🤖", layout="centered")
 
-# Define custom CSS
+# Define custom CSS (unchanged)
 st.markdown("""
 <style>
     /* Overall background */
@@ -117,11 +118,13 @@ if "messages" not in st.session_state:
 if "first_message_sent" not in st.session_state:
     st.session_state.first_message_sent = False
 
-# Define function to call Groq API
-def call_groq(prompt):
+# Define function to call OpenRouter API
+def call_openrouter(prompt):
     headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": SITE_URL,          # Optional, for rankings on openrouter.ai
+        "X-Title": APP_NAME                 # Optional, shows in logs
     }
     payload = {
         "model": MODEL_NAME,
@@ -129,13 +132,13 @@ def call_groq(prompt):
         "temperature": 0.7
     }
     try:
-        response = requests.post(GROQ_API_URL, json=payload, headers=headers)
+        response = requests.post(OPENROUTER_API_URL, json=payload, headers=headers)
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
         return f"⚠️ Error: {str(e)}"
 
-# Display header with logo
+# Display header with logo (optional)
 logo_path = "hubspot_logo.png"
 if os.path.exists(logo_path):
     st.image(logo_path, width=150)
@@ -159,7 +162,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Chat with sales"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_groq(user_msg)
+            reply = call_openrouter(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col2:
@@ -168,7 +171,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Book a demo"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_groq(user_msg)
+            reply = call_openrouter(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col3:
@@ -177,7 +180,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Get started for free"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_groq(user_msg)
+            reply = call_openrouter(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col4:
@@ -186,7 +189,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Get help with my account"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_groq(user_msg)
+            reply = call_openrouter(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     st.markdown("""
@@ -204,7 +207,7 @@ if prompt := st.chat_input("Ask me anything..."):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
         st.markdown(f'<div class="timestamp user-timestamp">{now}</div>', unsafe_allow_html=True)
-    reply = call_groq(prompt)
+    reply = call_openrouter(prompt)
     with st.chat_message("assistant", avatar="🤖"):
         st.markdown(reply)
         st.markdown(f'<div class="timestamp">{datetime.now().strftime("%I:%M %p")}</div>', unsafe_allow_html=True)
