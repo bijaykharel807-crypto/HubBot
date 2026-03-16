@@ -3,29 +3,70 @@ import os
 import requests
 from datetime import datetime
 
-# Load OpenRouter API key (prefer secrets, fallback to environment variable)
+# ---------------------------
+# Load API keys
+# ---------------------------
+# OpenRouter
 try:
     OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
 except:
     OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
-if not OPENROUTER_API_KEY:
-    st.error("OpenRouter API key not found. Please set it as an environment variable or add it to .streamlit/secrets.toml.")
+# Groq
+try:
+    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+except:
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+
+# Check if at least one key is available
+if not OPENROUTER_API_KEY and not GROQ_API_KEY:
+    st.error("No API keys found. Please add OPENROUTER_API_KEY or GROQ_API_KEY to secrets or environment variables.")
     st.stop()
 
-# Define constants
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
-# You can change this to any model from https://openrouter.ai/models
-MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"   # Free model
+# ---------------------------
+# Sidebar for provider selection
+# ---------------------------
+with st.sidebar:
+    st.markdown("### ⚙️ Settings")
+    provider = st.radio(
+        "Choose AI Provider",
+        options=["OpenRouter", "Groq"],
+        index=0 if OPENROUTER_API_KEY else 1,
+        disabled=(not OPENROUTER_API_KEY and not GROQ_API_KEY)
+    )
+    if provider == "OpenRouter" and not OPENROUTER_API_KEY:
+        st.warning("OpenRouter key missing. Select Groq or add key.")
+        st.stop()
+    if provider == "Groq" and not GROQ_API_KEY:
+        st.warning("Groq key missing. Select OpenRouter or add key.")
+        st.stop()
 
-# Optional: Identify your app to OpenRouter (helps with support)
-SITE_URL = "https://yourapp.com"   # Replace with your actual URL if deployed
-APP_NAME = "HubBot"
+# ---------------------------
+# Set provider-specific constants
+# ---------------------------
+if provider == "OpenRouter":
+    API_URL = "https://openrouter.ai/api/v1/chat/completions"
+    MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"   # Free model
+    HEADERS = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://yourapp.com",   # Optional
+        "X-Title": "HubBot"
+    }
+else:  # Groq
+    API_URL = "https://api.groq.com/openai/v1/chat/completions"
+    MODEL_NAME = "llama-3.3-70b-versatile"   # Popular Groq model
+    HEADERS = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
 # Set page configuration
 st.set_page_config(page_title="HubBot", page_icon="🤖", layout="centered")
 
-# Define custom CSS (unchanged)
+# ---------------------------
+# Custom CSS (unchanged)
+# ---------------------------
 st.markdown("""
 <style>
     /* Overall background */
@@ -121,27 +162,21 @@ if "messages" not in st.session_state:
 if "first_message_sent" not in st.session_state:
     st.session_state.first_message_sent = False
 
-# Define function to call OpenRouter API
-def call_openrouter(prompt):
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": SITE_URL,          # Optional, for rankings on openrouter.ai
-        "X-Title": APP_NAME                 # Optional, shows in logs
-    }
+# Define function to call the selected API
+def call_api(prompt):
     payload = {
         "model": MODEL_NAME,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
     try:
-        response = requests.post(OPENROUTER_API_URL, json=payload, headers=headers)
+        response = requests.post(API_URL, json=payload, headers=HEADERS)
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
-        return f"⚠️ Error: {str(e)}"
+        return f"⚠️ Error ({provider}): {str(e)}"
 
-# Display header with logo (optional)
+# Display header with logo
 logo_path = "hubspot_logo.png"
 if os.path.exists(logo_path):
     st.image(logo_path, width=150)
@@ -156,7 +191,7 @@ for msg in st.session_state.messages:
             ts_class = "user-timestamp" if msg["role"] == "user" else ""
             st.markdown(f'<div class="timestamp {ts_class}">{msg["timestamp"]}</div>', unsafe_allow_html=True)
 
-# Display options buttons
+# Display options buttons (only before first message)
 if not st.session_state.first_message_sent:
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -165,7 +200,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Chat with sales"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_openrouter(user_msg)
+            reply = call_api(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col2:
@@ -174,7 +209,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Book a demo"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_openrouter(user_msg)
+            reply = call_api(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col3:
@@ -183,7 +218,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Get started for free"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_openrouter(user_msg)
+            reply = call_api(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col4:
@@ -192,7 +227,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Get help with my account"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_openrouter(user_msg)
+            reply = call_api(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     st.markdown("""
@@ -210,7 +245,7 @@ if prompt := st.chat_input("Ask me anything..."):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
         st.markdown(f'<div class="timestamp user-timestamp">{now}</div>', unsafe_allow_html=True)
-    reply = call_openrouter(prompt)
+    reply = call_api(prompt)
     with st.chat_message("assistant", avatar="🤖"):
         st.markdown(reply)
         st.markdown(f'<div class="timestamp">{datetime.now().strftime("%I:%M %p")}</div>', unsafe_allow_html=True)
