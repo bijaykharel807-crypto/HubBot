@@ -4,62 +4,26 @@ import requests
 from datetime import datetime
 
 # ---------------------------
-# Load API keys
+# Load Groq API key
 # ---------------------------
-# OpenRouter
-try:
-    OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
-except:
-    OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-
-# Groq
 try:
     GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 except:
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-# Check if at least one key is available
-if not OPENROUTER_API_KEY and not GROQ_API_KEY:
-    st.error("No API keys found. Please add OPENROUTER_API_KEY or GROQ_API_KEY to secrets or environment variables.")
+if not GROQ_API_KEY:
+    st.error("Groq API key not found. Please set it as an environment variable or add it to .streamlit/secrets.toml.")
     st.stop()
 
 # ---------------------------
-# Sidebar for provider selection
+# Groq API constants
 # ---------------------------
-with st.sidebar:
-    st.markdown("### ⚙️ Settings")
-    provider = st.radio(
-        "Choose AI Provider",
-        options=["OpenRouter", "Groq"],
-        index=0 if OPENROUTER_API_KEY else 1,
-        disabled=(not OPENROUTER_API_KEY and not GROQ_API_KEY)
-    )
-    if provider == "OpenRouter" and not OPENROUTER_API_KEY:
-        st.warning("OpenRouter key missing. Select Groq or add key.")
-        st.stop()
-    if provider == "Groq" and not GROQ_API_KEY:
-        st.warning("Groq key missing. Select OpenRouter or add key.")
-        st.stop()
-
-# ---------------------------
-# Set provider-specific constants
-# ---------------------------
-if provider == "OpenRouter":
-    API_URL = "https://openrouter.ai/api/v1/chat/completions"
-    MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"   # Free model
-    HEADERS = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://yourapp.com",   # Optional
-        "X-Title": "HubBot"
-    }
-else:  # Groq
-    API_URL = "https://api.groq.com/openai/v1/chat/completions"
-    MODEL_NAME = "llama-3.3-70b-versatile"   # Popular Groq model
-    HEADERS = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
+API_URL = "https://api.groq.com/openai/v1/chat/completions"
+MODEL_NAME = "llama-3.3-70b-versatile"  # You can change this to any Groq model
+HEADERS = {
+    "Authorization": f"Bearer {GROQ_API_KEY}",
+    "Content-Type": "application/json"
+}
 
 # Set page configuration
 st.set_page_config(page_title="HubBot", page_icon="🤖", layout="centered")
@@ -162,8 +126,8 @@ if "messages" not in st.session_state:
 if "first_message_sent" not in st.session_state:
     st.session_state.first_message_sent = False
 
-# Define function to call the selected API
-def call_api(prompt):
+# Define function to call Groq API
+def call_groq(prompt):
     payload = {
         "model": MODEL_NAME,
         "messages": [{"role": "user", "content": prompt}],
@@ -174,7 +138,7 @@ def call_api(prompt):
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
-        return f"⚠️ Error ({provider}): {str(e)}"
+        return f"⚠️ Error: {str(e)}"
 
 # Display header with logo
 logo_path = "hubspot_logo.png"
@@ -200,7 +164,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Chat with sales"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_api(user_msg)
+            reply = call_groq(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col2:
@@ -209,7 +173,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Book a demo"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_api(user_msg)
+            reply = call_groq(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col3:
@@ -218,7 +182,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Get started for free"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_api(user_msg)
+            reply = call_groq(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     with col4:
@@ -227,7 +191,7 @@ if not st.session_state.first_message_sent:
             user_msg = "Get help with my account"
             now = datetime.now().strftime("%I:%M %p")
             st.session_state.messages.append({"role": "user", "content": user_msg, "timestamp": now})
-            reply = call_api(user_msg)
+            reply = call_groq(user_msg)
             st.session_state.messages.append({"role": "assistant", "content": reply, "timestamp": datetime.now().strftime("%I:%M %p")})
             st.rerun()
     st.markdown("""
@@ -245,7 +209,7 @@ if prompt := st.chat_input("Ask me anything..."):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
         st.markdown(f'<div class="timestamp user-timestamp">{now}</div>', unsafe_allow_html=True)
-    reply = call_api(prompt)
+    reply = call_groq(prompt)
     with st.chat_message("assistant", avatar="🤖"):
         st.markdown(reply)
         st.markdown(f'<div class="timestamp">{datetime.now().strftime("%I:%M %p")}</div>', unsafe_allow_html=True)
