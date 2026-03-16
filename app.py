@@ -3,11 +3,14 @@ import os
 import requests
 from datetime import datetime
 
-# Load OpenRouter API key from Streamlit secrets or environment variable
-OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
+# Load OpenRouter API key (prefer secrets, fallback to environment variable)
+try:
+    OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
+except:
+    OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 if not OPENROUTER_API_KEY:
-    st.error("OpenRouter API key not found. Please set it as an environment variable or add it to `.streamlit/secrets.toml`.")
+    st.error("OpenRouter API key not found. Please set it as an environment variable or add it to .streamlit/secrets.toml.")
     st.stop()
 
 # Define constants
