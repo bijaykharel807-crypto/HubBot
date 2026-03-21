@@ -19,7 +19,7 @@ if not GROQ_API_KEY:
 # Groq API constants
 # ---------------------------
 API_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = "llama-3.3-70b-versatile"  # You can change this to any Groq model
+MODEL_NAME = "llama-3.3-70b-versatile"  # Correct model name
 HEADERS = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
     "Content-Type": "application/json"
